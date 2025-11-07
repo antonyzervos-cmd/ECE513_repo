@@ -1,0 +1,5 @@
+* SPICE netlist of Part1-Parser.pdf
+R2 1 2 4
+I1 0 2 2
+R1 2 0 2
+V1 1 0 3
