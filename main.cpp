@@ -1,30 +1,44 @@
-//g++ main.cpp -I /usr/include/eigen3 -o main
+// main.cpp
+#include <iostream>
 #include "parser.cpp"
 #include "circuit_equations.cpp"
-#include <iostream>
-#include <utility>
 
-int main() {
-    auto [head, num_nodes] = parse_netlist("new 1.cir");
+RunOptions parse_options_from_file(const std::string&);
+SolveResult solve_mna(element*, int, const RunOptions&);
+void write_dc_op(const std::string&, element*, const SolveResult&);
+void run_dc_sweep(element*, int, const RunOptions&);
+void print_the_list(element*);
 
-    if (head == nullptr) {
-        std::cerr << "Error while parsing netlist.\n";
+int main(int argc, char** argv) {
+    if (argc < 2) {
+        std::cerr << "Usage: ./main <netlist.cir>\n";
         return 1;
     }
 
+    std::string filename = argv[1];
+
+    auto [head, num_nodes] = parse_netlist(filename);
+    if (!head) {
+        std::cerr << "Parsing failed.\n";
+        return 1;
+    }
+
+    RunOptions opts = parse_options_from_file(filename);
+
     print_the_list(head);
 
-    auto mna = build_MNA_DC(head, num_nodes);
-    const auto& A = mna.first;
-    const auto& rhs = mna.second;
+    SolveResult sol = solve_mna(head, num_nodes, opts);
+    write_dc_op("dc_op.txt", head, sol);
 
-    
-    // FREE MEMORY
-    element* temp;
-    while (head != nullptr) {
-        temp = head;
+    if (opts.do_dc_sweep)
+        run_dc_sweep(head, num_nodes, opts);
+
+    // free memory
+    while (head) {
+        element* t = head;
         head = head->next;
-        delete temp;
+        delete t;
     }
+
     return 0;
 }
