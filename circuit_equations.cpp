@@ -3,14 +3,13 @@
 #include <Eigen/Dense>
 #include <iomanip> 
 
+
 using namespace std;
 using namespace Eigen;
 
-void build_MNA_DC(element* head, int num_nodes ) {
+std::pair<MatrixXd, VectorXd> build_MNA_DC(element* head, int num_nodes ) {
     int n = num_nodes;
-    if (n < 0) {
-        return;
-    }
+ 
 
     // find how many V and L we have
     int m2 = 0;
@@ -107,23 +106,5 @@ void build_MNA_DC(element* head, int num_nodes ) {
     cout << "\nAssembled MNA matrix A (" << dim << "x" << dim << "):\n" << A << "\n";
     cout << "\nRHS vector:\n" << rhs << "\n";
 
-    if (dim == 0) {
-        cout << "No unknowns to solve (dim == 0).\n";
-        return;
-    }
-
-    // Solve system Ax = rhs
-    VectorXd x;
-    x = A.colPivHouseholderQr().solve(rhs);
-    
-    // Print node voltages
-    cout << "\nNode voltages (node 0 = ground):\n";
-    for (int k = 0; k < n; ++k) {
-        cout << "v" << (k+1) << " = " << x(k) << " V\n";
-    }
-
-    // Print currents through voltage sources
-    for (int k = 0; k < m2; ++k) {
-        cout << "iV" << (k+1) << " = " << x(n + k) << " A\n";
-    }
+    return {A,rhs};
 }
