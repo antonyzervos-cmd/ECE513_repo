@@ -1,4 +1,7 @@
 // main.cpp
+//g++ main.cpp parser.cpp circuit_equations.cpp options.cpp solver.cpp dc_sweep.cpp \
+    -I /usr/include/eigen3 -lgsl -lgslcblas -O2 -std=c++17 -o main
+
 #include <iostream>
 #include "parser.cpp"
 #include "circuit_equations.cpp"
