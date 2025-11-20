@@ -39,8 +39,10 @@ RunOptions parse_options_from_file(const std::string& filename) {
         std::string trimmed = line;
         trimmed.erase(0, trimmed.find_first_not_of(" \t"));
 
-        if (trimmed.empty()) continue;
-        if (trimmed[0] == '*') continue;
+        if (trimmed.empty()) 
+            continue;
+        if (trimmed[0] == '*') 
+            continue;
 
         std::string low = to_lower_str(trimmed);
 

@@ -3,27 +3,23 @@
 #include <Eigen/Dense>
 #include <iomanip> 
 
-
 using namespace std;
 using namespace Eigen;
 
 std::pair<MatrixXd, VectorXd> build_MNA_DC(element* head, int num_nodes ) {
     int n = num_nodes;
  
-
     // find how many V and L we have
     int m2 = 0;
     for (element* e = head; e != nullptr; e = e->next) {
         if (e->type == element::V || e->type == element::L) ++m2;
     }
 
-    cout << "MNA-DC -- nodes (excluding ground): " << n << ", voltage sources (incl. L->0V): " << m2 << "\n";
-
     // create MNA blocks
-    MatrixXd G = MatrixXd::Zero(n,n);    // array with resistors
-    MatrixXd B = MatrixXd::Zero(n,m2);   // array with voltages
-    VectorXd b = VectorXd::Zero(n);      // array with current sources
-    VectorXd s = VectorXd::Zero(m2);     // array with voltage sources         
+    MatrixXd G = MatrixXd::Zero(n,n);    
+    MatrixXd B = MatrixXd::Zero(n,m2);   
+    VectorXd b = VectorXd::Zero(n);      
+    VectorXd s = VectorXd::Zero(m2);     
 
 
     int v_idx = 0;

@@ -6,12 +6,12 @@
 #include <string>
 #include <vector>
 
-struct element;
-struct RunOptions;
-struct SolveResult;
+//struct element;
+//struct RunOptions;
+//struct SolveResult;
 
-SolveResult solve_mna(element* head, int num_nodes, const RunOptions&);
-void write_dc_op(const std::string&, element*, const SolveResult&);
+//SolveResult solve_Default(element* head, int num_nodes, const RunOptions&);
+//void write_dc_op(const std::string&, element*, const SolveResult&);
 
 static element* find_src(element* head, const std::string& name) {
     std::string low = name;
@@ -44,7 +44,7 @@ void run_dc_sweep(element* head, int num_nodes, const RunOptions& opts) {
     for (double v = opts.sweep_start; v <= opts.sweep_end + 1e-12; v += opts.sweep_step) {
         src->value = v;
 
-        SolveResult sol = solve_mna(head, num_nodes, opts);
+        SolveResult sol = solve_Default(head, num_nodes, opts);
 
         for (size_t i=0; i<opts.plot_nodes.size(); ++i) {
             const std::string& tok = opts.plot_nodes[i];

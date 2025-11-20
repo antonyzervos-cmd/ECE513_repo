@@ -10,11 +10,11 @@
 using namespace Eigen;
 
 // ----------- forward declarations from other .cpp files ----------
-struct element;
-std::pair<MatrixXd, VectorXd> build_MNA_DC(element* head, int num_nodes);
+//struct element;
+//std::pair<MatrixXd, VectorXd> build_MNA_DC(element* head, int num_nodes);
 
-struct RunOptions;
-RunOptions parse_options_from_file(const std::string&);
+//struct RunOptions;
+//RunOptions parse_options_from_file(const std::string&);
 
 // -----------------------------------------------------------
 struct SolveResult {
@@ -101,32 +101,37 @@ VectorXd custom_solve_cholesky(const MatrixXd& A_in, const VectorXd& b_in) {
     return x;
 }
 
-// ---------------------------------------------------------------
-SolveResult solve_mna(element* head, int num_nodes, const RunOptions& opts) {
+// -----------------------DEFAULT SOLVER ----------------------------------------
+SolveResult solve_Default(element* head, int num_nodes, const RunOptions& opts) {
     auto [A, rhs] = build_MNA_DC(head, num_nodes);
 
     int dim = A.rows();
     int m2 = 0;
-
-    for (element* e=head; e; e=e->next)
-        if (e->type == element::V || e->type == element::L)
+    // ypologismos agnwstwn
+    for (element* e=head; e; e=e->next) {
+        if (e->type == element::V || e->type == element::L) {
             m2++;
+        }
+    }
 
     VectorXd x;
-
-    if (opts.use_custom) {
-        if (opts.use_spd) x = custom_solve_cholesky(A, rhs);
-        else x = custom_solve_lu(A, rhs);
-    }
-    else {
+    if (opts.use_custom) { // custom solve chol or lu
         if (opts.use_spd) {
-            Eigen::LLT<MatrixXd> LL(A);
-            if (LL.info() == Eigen::Success)
-                x = LL.solve(rhs);
-            else
-                x = PartialPivLU<MatrixXd>(A).solve(rhs);
+            x = custom_solve_cholesky(A, rhs);
         }
         else {
+            x = custom_solve_lu(A, rhs);
+        }
+    }
+    else {
+        if (opts.use_spd) { // CHOLESKY EIGEN 
+            Eigen::LLT<MatrixXd> LL(A);
+            if (LL.info() == Eigen::Success) // Symmetrikos kai thetikos pinakas
+                x = LL.solve(rhs);
+            else    // eigen lu
+                x = PartialPivLU<MatrixXd>(A).solve(rhs);
+        }
+        else { // eigen lu
             x = PartialPivLU<MatrixXd>(A).solve(rhs);
         }
     }

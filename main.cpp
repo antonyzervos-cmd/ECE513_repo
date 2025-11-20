@@ -5,12 +5,15 @@
 #include <iostream>
 #include "parser.cpp"
 #include "circuit_equations.cpp"
+#include "options.cpp"
+#include "solver.cpp"
+#include "dc_sweep.cpp"
 
-RunOptions parse_options_from_file(const std::string&);
-SolveResult solve_mna(element*, int, const RunOptions&);
-void write_dc_op(const std::string&, element*, const SolveResult&);
-void run_dc_sweep(element*, int, const RunOptions&);
-void print_the_list(element*);
+//RunOptions parse_options_from_file(const std::string&);
+//SolveResult solve_Default(element*, int, const RunOptions&);
+//void write_dc_op(const std::string&, element*, const SolveResult&);
+//void run_dc_sweep(element*, int, const RunOptions&);
+//void print_the_list(element*);
 
 int main(int argc, char** argv) {
     if (argc < 2) {
@@ -21,16 +24,12 @@ int main(int argc, char** argv) {
     std::string filename = argv[1];
 
     auto [head, num_nodes] = parse_netlist(filename);
-    if (!head) {
-        std::cerr << "Parsing failed.\n";
-        return 1;
-    }
 
     RunOptions opts = parse_options_from_file(filename);
 
     print_the_list(head);
 
-    SolveResult sol = solve_mna(head, num_nodes, opts);
+    SolveResult sol = solve_Default(head, num_nodes, opts);
     write_dc_op("dc_op.txt", head, sol);
 
     if (opts.do_dc_sweep)
