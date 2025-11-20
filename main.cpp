@@ -1,6 +1,5 @@
 // main.cpp
-//g++ main.cpp parser.cpp circuit_equations.cpp options.cpp solver.cpp dc_sweep.cpp \
-    -I /usr/include/eigen3 -lgsl -lgslcblas -O2 -std=c++17 -o main
+// g++ main.cpp -I /usr/include/eigen3 -lgsl -lgslcblas -O2 -std=c++17 -o main
 
 #include <iostream>
 #include "parser.cpp"
@@ -10,7 +9,7 @@
 #include "dc_sweep.cpp"
 
 //RunOptions parse_options_from_file(const std::string&);
-//SolveResult solve_Default(element*, int, const RunOptions&);
+//SolveResult solve_system(element*, int, const RunOptions&);
 //void write_dc_op(const std::string&, element*, const SolveResult&);
 //void run_dc_sweep(element*, int, const RunOptions&);
 //void print_the_list(element*);
@@ -29,11 +28,12 @@ int main(int argc, char** argv) {
 
     print_the_list(head);
 
-    SolveResult sol = solve_Default(head, num_nodes, opts);
+    SolveResult sol = solve_system(head, num_nodes, opts);
     write_dc_op("dc_op.txt", head, sol);
 
-    if (opts.do_dc_sweep)
+    if (opts.do_dc_sweep) {
         run_dc_sweep(head, num_nodes, opts);
+    }
 
     // free memory
     while (head) {
