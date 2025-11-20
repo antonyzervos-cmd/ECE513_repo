@@ -1,21 +1,11 @@
 // solver.cpp
 #include <Eigen/Dense>
-#include <gsl/gsl_linalg.h>
-#include <gsl/gsl_blas.h>
 #include <vector>
 #include <fstream>
 #include <iostream>
 #include <cmath>
-
 using namespace Eigen;
 
-//struct element;
-//std::pair<MatrixXd, VectorXd> build_MNA_DC(element* head, int num_nodes);
-
-//struct RunOptions;
-//RunOptions parse_options_from_file(const std::string&);
-
-// -----------------------------------------------------------
 struct SolveResult {
     VectorXd x; // lysi
     int m2; // # agnwstwn
@@ -101,9 +91,8 @@ VectorXd custom_solve_cholesky(const MatrixXd& A_in, const VectorXd& b_in) {
 }
 
 // ----------------------- SOLVER ----------------------------------------
-SolveResult solve_system(element* head, int num_nodes, const RunOptions& opts) {
-    auto [A, rhs] = build_MNA_DC(head, num_nodes);
-
+SolveResult solve_system(element* head, int num_nodes, const RunOptions& opts, MatrixXd A, VectorXd rhs) {
+    
     int dim = A.rows();
     int m2 = 0;
     // ypologismos agnwstwn
@@ -143,13 +132,9 @@ SolveResult solve_system(element* head, int num_nodes, const RunOptions& opts) {
     return sr;
 }
 
-// ----------------------------------------------------------
+// --------------------------DC ANALYSIS--------------------------------
 void write_dc_op(const std::string& filename, element* head, const SolveResult& sol) {
     std::ofstream ofs(filename);
-    if (!ofs) {
-        std::cerr << "cannot open " << filename << "\n";
-        return;
-    }
 
     for (int i=1; i<=sol.n_nodes; ++i)
         ofs << "NODE_" << i << " = " << sol.x(i-1) << "\n";

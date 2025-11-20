@@ -8,12 +8,6 @@
 #include "solver.cpp"
 #include "dc_sweep.cpp"
 
-//RunOptions parse_options_from_file(const std::string&);
-//SolveResult solve_system(element*, int, const RunOptions&);
-//void write_dc_op(const std::string&, element*, const SolveResult&);
-//void run_dc_sweep(element*, int, const RunOptions&);
-//void print_the_list(element*);
-
 int main(int argc, char** argv) {
     if (argc < 2) {
         std::cerr << "No args!\n";
@@ -28,11 +22,13 @@ int main(int argc, char** argv) {
 
     print_the_list(head);
 
-    SolveResult sol = solve_system(head, num_nodes, opts);
+    auto [A, rhs, vsrc_index_map, isrc_index_map] = build_MNA_DC(head, num_nodes);
+
+    SolveResult sol = solve_system(head, num_nodes, opts, A, rhs);
     write_dc_op("dc_op.txt", head, sol);
 
     if (opts.do_dc_sweep) {
-        run_dc_sweep(head, num_nodes, opts);
+        run_dc_sweep(head, num_nodes, opts, A, rhs, vsrc_index_map, isrc_index_map);
     }
 
     // free memory

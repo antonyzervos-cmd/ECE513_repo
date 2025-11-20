@@ -30,7 +30,6 @@ RunOptions parse_options_from_file(const std::string& filename) {
     RunOptions opts;
     std::ifstream ifs(filename);
 
-
     std::string line;
     while (std::getline(ifs, line)) {
         std::string trimmed = line; // trimmed = afairesh kenwn kai tabs
