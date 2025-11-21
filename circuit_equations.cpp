@@ -7,7 +7,14 @@
 using namespace std;
 using namespace Eigen;
 
-std::tuple<MatrixXd, VectorXd,  unordered_map<string,int>, unordered_map<string,int>> build_MNA_DC(element* head, int num_nodes) 
+
+struct IStamp {
+    int i;
+    int j;
+};
+
+
+std::tuple<MatrixXd, VectorXd,  unordered_map<string,int>, unordered_map<string, IStamp>> build_MNA_DC(element* head, int num_nodes) 
 {
     int n = num_nodes;
 
@@ -26,7 +33,7 @@ std::tuple<MatrixXd, VectorXd,  unordered_map<string,int>, unordered_map<string,
 
     // Maps
     unordered_map<string,int> vsrc_index_map;  // Voltage & inductors
-    unordered_map<string,int> isrc_index_map;  // Current sources
+    unordered_map<string, IStamp> isrc_index_map;  // Current sources
 
     int v_idx = 0;
 
@@ -60,12 +67,12 @@ std::tuple<MatrixXd, VectorXd,  unordered_map<string,int>, unordered_map<string,
             {
                 double I = static_cast<double>(e->value);
 
-                // stamp into b[]
                 if (i >= 0) b(i) -= I;
                 if (j >= 0) b(j) += I;
 
-                // add to map
-                isrc_index_map[e->name] = isrc_index_map.size();
+                cout << i << j;
+
+                isrc_index_map[e->name] = { i, j };
                 break;
             }
 
