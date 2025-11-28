@@ -138,7 +138,7 @@ void print_the_list(element* head) {
 }
 
 
-std::pair<element*, int> parse_netlist(const std::string& filename) { 
+std::tuple<element*, int, std::unordered_map<std::string,int>> parse_netlist(const std::string& filename) { 
     try {
         // Open the file
         std::ifstream file(filename); // stream apo file
@@ -282,10 +282,10 @@ std::pair<element*, int> parse_netlist(const std::string& filename) {
         // -------------------------------------
         print_hash_table(node_map);
 
-        return {head, static_cast<int>(node_map.size())};
+        return {head, static_cast<int>(node_map.size()), node_map};
     } 
     catch (const std::ios_base::failure& e) {
         std::cerr << "Cannot open given file: " << e.what() << "\n";
-        return {nullptr, 0};
+        return {nullptr, 0, {}};
     }
 }

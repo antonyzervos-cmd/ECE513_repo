@@ -14,8 +14,7 @@ struct IStamp {
 };
 
 
-std::tuple<MatrixXd, VectorXd,  unordered_map<string,int>, unordered_map<string, IStamp>> build_MNA_DC(element* head, int num_nodes) 
-{
+std::tuple<MatrixXd, VectorXd,  unordered_map<string,int>, unordered_map<string, IStamp>> build_MNA_DC(element* head, int num_nodes) {
     int n = num_nodes;
 
     // count voltage sources and inductors (treated as V sources in DC)
@@ -70,7 +69,7 @@ std::tuple<MatrixXd, VectorXd,  unordered_map<string,int>, unordered_map<string,
                 if (i >= 0) b(i) -= I;
                 if (j >= 0) b(j) += I;
 
-                cout << i << j;
+               // cout << i << j;
 
                 isrc_index_map[e->name] = { i, j };
                 break;
@@ -129,15 +128,15 @@ std::tuple<MatrixXd, VectorXd,  unordered_map<string,int>, unordered_map<string,
     VectorXd rhs(dim);
     rhs << b, s;
 
-    // Debug prints
-    cout << fixed << setprecision(6);
-    cout << "\n--- Assembled MNA matrix A (" << dim << "x" << dim << ") ---\n";
-    cout << A << "\n";
 
-    cout << "\n--- RHS vector ---\n";
-    cout << rhs << "\n";
+    // cout << fixed << setprecision(6);
+    // cout << "\n--- Assembled MNA matrix A (" << dim << "x" << dim << ") ---\n";
+    // cout << A << "\n";
+
+    // cout << "\n--- RHS vector ---\n";
+    // cout << rhs << "\n";
 
 
     // return A, rhs, and two maps
-    return { A, rhs, vsrc_index_map, isrc_index_map };
+    return { A, rhs, vsrc_index_map, isrc_index_map};
 }

@@ -12,7 +12,8 @@ void run_dc_sweep(
     MatrixXd& A,
     VectorXd& rhs,
     unordered_map<string,int>& vsrc_index_map,
-    unordered_map<string, IStamp>& isrc_index_map) {
+    unordered_map<string, IStamp>& isrc_index_map,
+    const unordered_map<string,int>& node_map) {
 
     // check vsrc or isrc
     bool sweep_is_voltage = false;
@@ -49,10 +50,10 @@ void run_dc_sweep(
             rhs(rhs_pos) = v;  // change s[k]
 
                 // --- PRINT RHS ---
-            cout << "\n========== VOLTAGE SWEEP ==========\n";
-            cout << "Set " << opts.sweep_source << " = " << v << "\n";
-            cout << "Updated RHS:\n" << rhs << "\n";
-            cout << "===================================\n";
+           // cout << "\n========== VOLTAGE SWEEP ==========\n";
+           // cout << "Set " << opts.sweep_source << " = " << v << "\n";
+           // cout << "Updated RHS:\n" << rhs << "\n";
+           // cout << "===================================\n";
         }
         // SWEEP CURRENT SOURCE
         else if (sweep_is_current)
@@ -65,35 +66,33 @@ void run_dc_sweep(
             if (st.j >= 0) rhs(st.j) += v;
 
                 // --- PRINT RHS ---
-                cout << "\n========== CURRENT SWEEP ==========\n";
-                cout << "Set " << opts.sweep_source << " = " << v << "\n";
-                cout << "Updated RHS:\n" << rhs << "\n";
-                cout << "===================================\n";
+             //   cout << "\n========== CURRENT SWEEP ==========\n";
+            //    cout << "Set " << opts.sweep_source << " = " << v << "\n";
+             //   cout << "Updated RHS:\n" << rhs << "\n";
+            //    cout << "===================================\n";
         }
 
         // solution
         SolveResult sol = solve_system(head, num_nodes, opts, A, rhs);
 
-        // sta arxeia grafw to output
-        for (size_t i = 0; i < opts.plot_nodes.size(); ++i) {
+        for (size_t i = 0; i < opts.plot_nodes.size(); ++i)
+        {
+            const string& tok = opts.plot_nodes[i];   // px "V(4)" ή "V(out)"
 
-            const string& tok = opts.plot_nodes[i];
-            string digits;
-            for (char c : tok)
-                if (isdigit((unsigned char)c)) digits.push_back(c);
+            size_t open = tok.find('(');
+            size_t close = tok.find(')');
 
-            int node = digits.empty() ? -1 : stoi(digits);
-            double val = (node >= 1 && node <= sol.n_nodes) ? sol.x(node - 1): 0;
+            string node_name = tok.substr(open + 1, close - open - 1);
 
+            // lowercase 
+            transform(node_name.begin(), node_name.end(),
+                    node_name.begin(), ::tolower);
+
+
+            int mna_id = node_map.at(node_name);   // map apo to HASH sto MNA ID
+
+            double val = sol.x(mna_id - 1);
             outputs[i] << v << " " << val << "\n";
-            cout << "token=" << tok 
-            << "  digits=" << digits 
-            << "  node=" << node << endl;
         }
-        
-
-
-
-
     }
 }

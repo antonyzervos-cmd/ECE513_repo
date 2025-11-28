@@ -16,19 +16,23 @@ int main(int argc, char** argv) {
 
     std::string filename = argv[1];
 
-    auto [head, num_nodes] = parse_netlist(filename);
+    auto [head, num_nodes, node_map] = parse_netlist(filename);
 
-    RunOptions opts = parse_options_from_file(filename);
+    std::vector<RunOptions> all_opts = parse_all_options(filename);
 
     print_the_list(head);
 
     auto [A, rhs, vsrc_index_map, isrc_index_map] = build_MNA_DC(head, num_nodes);
 
-    SolveResult sol = solve_system(head, num_nodes, opts, A, rhs);
+    SolveResult sol = solve_system(head, num_nodes, all_opts[0], A, rhs);
     write_dc_op("dc_op.txt", head, sol);
 
-    if (opts.do_dc_sweep) {
-        run_dc_sweep(head, num_nodes, opts, A, rhs, vsrc_index_map, isrc_index_map);
+    for (const RunOptions& opts : all_opts)
+    {
+        if (!opts.do_dc_sweep)
+            continue;
+
+        run_dc_sweep( head,num_nodes, opts,A,rhs, vsrc_index_map, isrc_index_map, node_map);
     }
 
     // free memory
