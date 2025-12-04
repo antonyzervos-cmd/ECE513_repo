@@ -15,13 +15,14 @@ struct SolveResult {
 
 VectorXd compute_preconditioner_inverse(const MatrixXd& A) {
     int n = A.rows();
-    VectorXd M_inv(n);
+    VectorXd M_inv(n); // Μ ^ -1
     for (int i = 0; i < n; ++i) {
         double val = A(i, i);
         if (std::abs(val) < 1e-16) {
-            M_inv(i) = 1.0; // Βάσει εκφώνησης: αν aii=0, αποθηκεύουμε 1
-        } else {
-            M_inv(i) = 1.0 / val;
+            M_inv(i) = 1.0; //aii=0, tote 1
+        } 
+        else {
+            M_inv(i) = 1.0 / val; // 1/aii
         }
     }
     return M_inv;
@@ -29,43 +30,40 @@ VectorXd compute_preconditioner_inverse(const MatrixXd& A) {
 
 
 VectorXd solve_cg(const MatrixXd& A, const VectorXd& b, double itol, int max_iter) {
-    int n = A.rows();
-    VectorXd x = VectorXd::Zero(n); // Initial guess x0 = 0
-    VectorXd r = b - A * x;         // r0 = b - A*0 = b
+    int n = A.rows(); // diastasi
+    VectorXd x = VectorXd::Zero(n); // x0 = 0
+    VectorXd r = b - A * x;         // arxiko ypoloipo 
     
-    double b_norm = b.norm();
-    if (b_norm == 0) b_norm = 1.0; // Αποφυγή διαίρεσης με 0
+    double b_norm = b.norm(); // gia elexgo sygklishs 
+    if (b_norm == 0) b_norm = 1.0; // gia /0
 
-    // Preconditioner M = diag(A) -> z = M^-1 * r
-    VectorXd M_inv = compute_preconditioner_inverse(A);
-    VectorXd z = r.cwiseProduct(M_inv); // Element-wise multiplication
+    // preconditioner 
+    VectorXd M_inv = compute_preconditioner_inverse(A); // M = diag A 
+    VectorXd z = r.cwiseProduct(M_inv); // z = M-1 * r
     
-    VectorXd p = z;
-    double rho = r.dot(z); // r^T * z
+    VectorXd p = z; // kateythinsi arxika
+    double rho = r.dot(z); // rho =  r^T * z
     
     int iter = 0;
-    while ( (r.norm() / b_norm > itol) && (iter < max_iter) ) {
+    while ( (r.norm() / b_norm > itol) && (iter < max_iter) ) { // oso sfalma > itol
         iter++;
         
         VectorXd q = A * p;
-        double alpha = rho / p.dot(q);
+        double alpha = rho / p.dot(q); // rho / (p^T * A * p)
         
-        x = x + alpha * p;
-        r = r - alpha * q;
+        x = x + alpha * p; // x new
+        r = r - alpha * q; // new ypoloipo 
         
-        // Convergence check inside loop to break early? (Done in while condition)
         
-        // Preconditioner solve for next step
-        VectorXd z_new = r.cwiseProduct(M_inv);
-        double rho_new = r.dot(z_new);
+        // gia epomeno bhma
+        VectorXd z_new = r.cwiseProduct(M_inv); // znew = M-1 * r
+        double rho_new = r.dot(z_new); // rho new =  r^T * z
         
-        double beta = rho_new / rho;
-        p = z_new + beta * p;
+        double beta = rho_new / rho; // beta = rho new / rho old
+        p = z_new + beta * p; // new direction
         
         rho = rho_new;
     }
-    
-    // std::cout << "CG converged in " << iter << " iterations.\n";
     return x;
 }
 
@@ -74,7 +72,7 @@ VectorXd solve_bicg(const MatrixXd& A, const VectorXd& b, double itol, int max_i
     int n = A.rows();
     VectorXd x = VectorXd::Zero(n); // Initial guess
     
-    // Initial residuals
+    // arxika
     VectorXd r = b - A * x;
     VectorXd r_tilde = r; // r_tilde_0 = r_0
     
@@ -84,14 +82,14 @@ VectorXd solve_bicg(const MatrixXd& A, const VectorXd& b, double itol, int max_i
     VectorXd M_inv = compute_preconditioner_inverse(A);
     
     // Initial preconditioner solve
-    VectorXd z = r.cwiseProduct(M_inv);
-    VectorXd z_tilde = r_tilde.cwiseProduct(M_inv); // M^T = M for diagonal
+    VectorXd z = r.cwiseProduct(M_inv); // z = M^ -1 * r
+    VectorXd z_tilde = r_tilde.cwiseProduct(M_inv); // M^T * z_tilde = r tilde
     
-    double rho = r_tilde.dot(z); // Προσοχή: r_tilde^T * z
-    if (std::abs(rho) < 1e-14) return x; // Failure prevention
+    double rho = r_tilde.dot(z); // rho = r_tilde^T * z
+    if (std::abs(rho) < 1e-14) return x; // Failure 
 
     VectorXd p = z;
-    VectorXd p_tilde = z_tilde;
+    VectorXd p_tilde = z_tilde; 
     
     int iter = 0;
     while ( (r.norm() / b_norm > itol) && (iter < max_iter) ) {
@@ -109,7 +107,7 @@ VectorXd solve_bicg(const MatrixXd& A, const VectorXd& b, double itol, int max_i
         r = r - alpha * q;
         r_tilde = r_tilde - alpha * q_tilde;
         
-        // Next step prep
+        // next step prep
         VectorXd z_new = r.cwiseProduct(M_inv);
         VectorXd z_tilde_new = r_tilde.cwiseProduct(M_inv);
         
@@ -123,8 +121,6 @@ VectorXd solve_bicg(const MatrixXd& A, const VectorXd& b, double itol, int max_i
         
         rho = rho_new;
     }
-
-    // std::cout << "Bi-CG converged in " << iter << " iterations.\n";
     return x;
 }
 
@@ -211,7 +207,7 @@ SolveResult solve_system(element* head, int num_nodes, const RunOptions& opts, M
     
     int dim = A.rows();
     int m2 = 0;
-    // ypologismos agnwstwn (Βοηθητικό για το struct αποτελέσματος)
+    // ypologismos agnwstwn 
     for (element* e=head; e; e=e->next) {
         if (e->type == element::V || e->type == element::L) {
             m2++;
@@ -220,19 +216,21 @@ SolveResult solve_system(element* head, int num_nodes, const RunOptions& opts, M
 
     VectorXd x;
 
-    // 1. ITERATIVE SOLVERS
+    // ITERATIVE SOLVERS
     if (opts.use_iter) {
-        int max_iter = dim + 100; // ή κάποιο σταθερό όριο π.χ. 10000
+        int max_iter = dim + 100; 
         
         if (opts.use_spd) {
             // CG
+            // cout << "MPHKA\n";
             x = solve_cg(A, rhs, opts.itol, max_iter);
         } else {
             // Bi-CG
+            // cout << "MPHKA\n";
             x = solve_bicg(A, rhs, opts.itol, max_iter);
         }
     }
-    // 2. DIRECT SOLVERS (CUSTOM)
+    // CUSTOM
     else if (opts.use_custom) { 
         if (opts.use_spd) {
             x = custom_solve_cholesky(A, rhs);
@@ -241,7 +239,7 @@ SolveResult solve_system(element* head, int num_nodes, const RunOptions& opts, M
             x = custom_solve_lu(A, rhs);
         }
     }
-    // 3. DIRECT SOLVERS (EIGEN DEFAULT)
+    // EIGEN
     else {
         if (opts.use_spd) { 
             Eigen::LLT<MatrixXd> LL(A);

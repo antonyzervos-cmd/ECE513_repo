@@ -29,88 +29,57 @@ static inline std::string to_lower_str(const std::string& s) {
     return t;
 }
 
-std::vector<RunOptions> parse_all_options(const std::string& filename)
-{
+RunOptions parse_options_from_file(const std::string& filename) {
     std::ifstream file(filename);
-    std::vector<RunOptions> all;
+    RunOptions opts;
 
-    RunOptions base; 
-    base.do_dc_sweep = false;
-    // default values
-    base.use_iter = false;
-    base.use_spd = false;
-    base.itol = 1e-3;
+    opts.use_iter = false;
+    opts.use_spd = false;
+    opts.itol = 1e-3;
+    opts.do_dc_sweep = false;
 
     std::string line;
     while (std::getline(file, line))
     {
         std::string low = line;
         to_lowercase(low);
+
         if (low.rfind(".options", 0) == 0) {
             std::istringstream iss(low);
             std::string token;
-            iss >> token; // skip .options
+            iss >> token; // .options
 
             while (iss >> token) {
-                if (token == "iter") {
-                    base.use_iter = true;
-                }
+                if (token == "iter") 
+                    opts.use_iter = true;
                 else if (token == "spd") {
-                    base.use_spd = true;
+                    opts.use_spd = true;
                 }
-                else if (token.find("itol=") == 0) {
-                    // Parse itol value e.g., itol=1e-4
-                    std::string val_str = token.substr(5); // skip "itol="
-                    try {
-                        base.itol = std::stod(val_str);
-                    } catch (...) {
-                        std::cerr << "Warning: Invalid ITOL format, using default 1e-3\n";
-                    }
-                }
+                else if (token.find("itol=") == 0)
+                    opts.itol = std::stod(token.substr(5));
             }
-            continue;
         }
-        // -----------------------
-        // .print / .plot
-        // -----------------------
-        if (low.rfind(".print", 0) == 0 || low.rfind(".plot", 0) == 0)
+        else if (low.rfind(".print", 0) == 0 || low.rfind(".plot", 0) == 0)
         {
             std::istringstream iss(low);
-            std::string cmd;
-            iss >> cmd;         // .print
             std::string token;
-
+            iss >> token; // .print
             while (iss >> token)
-                base.plot_nodes.push_back(token);
-
-            continue;
+                opts.plot_nodes.push_back(token);
         }
-
-        // -----------------------
-        // .dc
-        // -----------------------
-        if (low.rfind(".dc", 0) == 0)
+        else if (low.rfind(".dc", 0) == 0)
         {
-            RunOptions dc = base;  
-
             std::istringstream iss(low);
-            std::string cmd;
-            iss >> cmd;  // .dc
+            std::string token;
+            iss >> token;          // .dc
+            iss >> opts.sweep_source;
+            iss >> opts.sweep_start;
+            iss >> opts.sweep_end;
+            iss >> opts.sweep_step;
 
-            iss >> dc.sweep_source;
-            iss >> dc.sweep_start;
-            iss >> dc.sweep_end;
-            iss >> dc.sweep_step;
-
-            dc.do_dc_sweep = true;
-
-            all.push_back(dc);
-            continue;
+            opts.do_dc_sweep = true;
         }
     }
 
-    if (all.empty())
-        all.push_back(base);
-
-    return all;
+    return opts;
 }
