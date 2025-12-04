@@ -12,6 +12,122 @@ struct SolveResult {
     int n_nodes;
 };
 
+
+VectorXd compute_preconditioner_inverse(const MatrixXd& A) {
+    int n = A.rows();
+    VectorXd M_inv(n);
+    for (int i = 0; i < n; ++i) {
+        double val = A(i, i);
+        if (std::abs(val) < 1e-16) {
+            M_inv(i) = 1.0; // Βάσει εκφώνησης: αν aii=0, αποθηκεύουμε 1
+        } else {
+            M_inv(i) = 1.0 / val;
+        }
+    }
+    return M_inv;
+}
+
+
+VectorXd solve_cg(const MatrixXd& A, const VectorXd& b, double itol, int max_iter) {
+    int n = A.rows();
+    VectorXd x = VectorXd::Zero(n); // Initial guess x0 = 0
+    VectorXd r = b - A * x;         // r0 = b - A*0 = b
+    
+    double b_norm = b.norm();
+    if (b_norm == 0) b_norm = 1.0; // Αποφυγή διαίρεσης με 0
+
+    // Preconditioner M = diag(A) -> z = M^-1 * r
+    VectorXd M_inv = compute_preconditioner_inverse(A);
+    VectorXd z = r.cwiseProduct(M_inv); // Element-wise multiplication
+    
+    VectorXd p = z;
+    double rho = r.dot(z); // r^T * z
+    
+    int iter = 0;
+    while ( (r.norm() / b_norm > itol) && (iter < max_iter) ) {
+        iter++;
+        
+        VectorXd q = A * p;
+        double alpha = rho / p.dot(q);
+        
+        x = x + alpha * p;
+        r = r - alpha * q;
+        
+        // Convergence check inside loop to break early? (Done in while condition)
+        
+        // Preconditioner solve for next step
+        VectorXd z_new = r.cwiseProduct(M_inv);
+        double rho_new = r.dot(z_new);
+        
+        double beta = rho_new / rho;
+        p = z_new + beta * p;
+        
+        rho = rho_new;
+    }
+    
+    // std::cout << "CG converged in " << iter << " iterations.\n";
+    return x;
+}
+
+
+VectorXd solve_bicg(const MatrixXd& A, const VectorXd& b, double itol, int max_iter) {
+    int n = A.rows();
+    VectorXd x = VectorXd::Zero(n); // Initial guess
+    
+    // Initial residuals
+    VectorXd r = b - A * x;
+    VectorXd r_tilde = r; // r_tilde_0 = r_0
+    
+    double b_norm = b.norm();
+    if (b_norm == 0) b_norm = 1.0;
+
+    VectorXd M_inv = compute_preconditioner_inverse(A);
+    
+    // Initial preconditioner solve
+    VectorXd z = r.cwiseProduct(M_inv);
+    VectorXd z_tilde = r_tilde.cwiseProduct(M_inv); // M^T = M for diagonal
+    
+    double rho = r_tilde.dot(z); // Προσοχή: r_tilde^T * z
+    if (std::abs(rho) < 1e-14) return x; // Failure prevention
+
+    VectorXd p = z;
+    VectorXd p_tilde = z_tilde;
+    
+    int iter = 0;
+    while ( (r.norm() / b_norm > itol) && (iter < max_iter) ) {
+        iter++;
+        
+        VectorXd q = A * p;
+        VectorXd q_tilde = A.transpose() * p_tilde;
+        
+        double omega = p_tilde.dot(q);
+        if (std::abs(omega) < 1e-14) break; // Failure
+        
+        double alpha = rho / omega;
+        
+        x = x + alpha * p;
+        r = r - alpha * q;
+        r_tilde = r_tilde - alpha * q_tilde;
+        
+        // Next step prep
+        VectorXd z_new = r.cwiseProduct(M_inv);
+        VectorXd z_tilde_new = r_tilde.cwiseProduct(M_inv);
+        
+        double rho_new = r_tilde.dot(z_new);
+        if (std::abs(rho_new) < 1e-14) break;
+        
+        double beta = rho_new / rho;
+        
+        p = z_new + beta * p;
+        p_tilde = z_tilde_new + beta * p_tilde;
+        
+        rho = rho_new;
+    }
+
+    // std::cout << "Bi-CG converged in " << iter << " iterations.\n";
+    return x;
+}
+
 // -------------------- Custom LU --------------------------------
 VectorXd custom_solve_lu(const MatrixXd& A_in, const VectorXd& b_in) {
     int n = A_in.rows();
@@ -95,7 +211,7 @@ SolveResult solve_system(element* head, int num_nodes, const RunOptions& opts, M
     
     int dim = A.rows();
     int m2 = 0;
-    // ypologismos agnwstwn
+    // ypologismos agnwstwn (Βοηθητικό για το struct αποτελέσματος)
     for (element* e=head; e; e=e->next) {
         if (e->type == element::V || e->type == element::L) {
             m2++;
@@ -103,7 +219,21 @@ SolveResult solve_system(element* head, int num_nodes, const RunOptions& opts, M
     }
 
     VectorXd x;
-    if (opts.use_custom) { // custom solve chol or lu
+
+    // 1. ITERATIVE SOLVERS
+    if (opts.use_iter) {
+        int max_iter = dim + 100; // ή κάποιο σταθερό όριο π.χ. 10000
+        
+        if (opts.use_spd) {
+            // CG
+            x = solve_cg(A, rhs, opts.itol, max_iter);
+        } else {
+            // Bi-CG
+            x = solve_bicg(A, rhs, opts.itol, max_iter);
+        }
+    }
+    // 2. DIRECT SOLVERS (CUSTOM)
+    else if (opts.use_custom) { 
         if (opts.use_spd) {
             x = custom_solve_cholesky(A, rhs);
         }
@@ -111,15 +241,16 @@ SolveResult solve_system(element* head, int num_nodes, const RunOptions& opts, M
             x = custom_solve_lu(A, rhs);
         }
     }
+    // 3. DIRECT SOLVERS (EIGEN DEFAULT)
     else {
-        if (opts.use_spd) { // CHOLESKY EIGEN 
+        if (opts.use_spd) { 
             Eigen::LLT<MatrixXd> LL(A);
-            if (LL.info() == Eigen::Success) // Symmetrikos kai thetikos pinakas
+            if (LL.info() == Eigen::Success)
                 x = LL.solve(rhs);
-            else    // eigen lu
+            else    
                 x = PartialPivLU<MatrixXd>(A).solve(rhs);
         }
-        else { // eigen lu
+        else { 
             x = PartialPivLU<MatrixXd>(A).solve(rhs);
         }
     }

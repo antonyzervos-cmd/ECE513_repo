@@ -32,7 +32,12 @@ int main(int argc, char** argv) {
         if (!opts.do_dc_sweep)
             continue;
 
-        run_dc_sweep( head,num_nodes, opts,A,rhs, vsrc_index_map, isrc_index_map, node_map);
+        // Δημιουργία αντιγράφων για κάθε sweep ώστε να είναι ανεξάρτητα
+        // και να μην επηρεάζει το ένα τις πηγές του άλλου στο rhs.
+        MatrixXd A_copy = A;
+        VectorXd rhs_copy = rhs;
+
+        run_dc_sweep( head,num_nodes, opts, A_copy, rhs_copy, vsrc_index_map, isrc_index_map, node_map);
     }
 
     // free memory
