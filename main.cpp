@@ -6,8 +6,7 @@
 #include "dc_sweep.cpp"
 
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
     if (argc < 2) {
         std::cerr << "No args!\n";
         return 1;
@@ -34,7 +33,11 @@ int main(int argc, char** argv)
 
     // DC sweep 
     if (opts.do_dc_sweep) {
-        run_dc_sweep(head,num_nodes,opts,A,rhs,vsrc_index_map, isrc_index_map, node_map );
+        VectorXd rhs_backup = rhs; 
+        for (const auto& cmd : opts.dc_commands) {
+            rhs = rhs_backup;
+            run_dc_sweep(head,num_nodes,cmd,opts,A,rhs,vsrc_index_map, isrc_index_map, node_map);
+        }
     }
 
     // Free memory

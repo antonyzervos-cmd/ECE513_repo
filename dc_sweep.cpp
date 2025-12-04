@@ -8,6 +8,7 @@
 void run_dc_sweep(
     element* head,
     int num_nodes,
+    const CommandDC& cmd, 
     const RunOptions& opts,
     MatrixXd& A,
     VectorXd& rhs,
@@ -19,19 +20,19 @@ void run_dc_sweep(
     bool sweep_is_voltage = false;
     bool sweep_is_current = false;
 
-    if (vsrc_index_map.find(opts.sweep_source) != vsrc_index_map.end())
+    if (vsrc_index_map.find(cmd.source_name) != vsrc_index_map.end())
         sweep_is_voltage = true;
-    else if (isrc_index_map.find(opts.sweep_source) != isrc_index_map.end())
+    else if (isrc_index_map.find(cmd.source_name) != isrc_index_map.end())
         sweep_is_current = true;
     else {
-        cerr << "ERROR: sweep source not found \n" << opts.sweep_source;
+        cerr << "ERROR: sweep source not found \n" << cmd.source_name;
         return;
     }
 
     // ta plot nodes
     vector<ofstream> outputs;
-    for (const auto& p : opts.plot_nodes) {
-        string fname = "dc_sweep_" + opts.sweep_source + "_V(" + p + ").txt";
+    for (const auto& p : cmd.plot_nodes) {
+        string fname = "dc_sweep_" + cmd.source_name + "_V(" + p + ").txt";
         outputs.emplace_back(fname);
     }
 
@@ -40,32 +41,31 @@ void run_dc_sweep(
     VectorXd b_base = rhs.segment(0, num_nodes);
 
     // LOOP SWEEP
-    for (double v = opts.sweep_start; v <= opts.sweep_end; v += opts.sweep_step)
+    for (double v = cmd.start; v <= cmd.end + 1e-9; v += cmd.step)
     {
         //SWEEP VOLTAGE SOURCE
         if (sweep_is_voltage) {
-            int k = vsrc_index_map[opts.sweep_source];
+            int k = vsrc_index_map[cmd.source_name];
             int rhs_pos = num_nodes + k;   // s[]
 
             rhs(rhs_pos) = v;  // change s[k]
 
-                // --- PRINT RHS ---
+            // --- PRINT RHS ---
            // cout << "\n========== VOLTAGE SWEEP ==========\n";
            // cout << "Set " << opts.sweep_source << " = " << v << "\n";
            // cout << "Updated RHS:\n" << rhs << "\n";
            // cout << "===================================\n";
         }
         // SWEEP CURRENT SOURCE
-        else if (sweep_is_current)
-        {
-            IStamp st = isrc_index_map[opts.sweep_source];
+        else if (sweep_is_current) {
+            IStamp st = isrc_index_map[cmd.source_name];
 
             rhs.segment(0, num_nodes) = b_base;
 
             if (st.i >= 0) rhs(st.i) -= v;
             if (st.j >= 0) rhs(st.j) += v;
 
-                // --- PRINT RHS ---
+            // --- PRINT RHS ---
              //   cout << "\n========== CURRENT SWEEP ==========\n";
             //    cout << "Set " << opts.sweep_source << " = " << v << "\n";
              //   cout << "Updated RHS:\n" << rhs << "\n";
@@ -75,9 +75,8 @@ void run_dc_sweep(
         // solution
         SolveResult sol = solve_system(head, num_nodes, opts, A, rhs);
 
-        for (size_t i = 0; i < opts.plot_nodes.size(); ++i)
-        {
-            const string& tok = opts.plot_nodes[i];   // px "V(4)" ή "V(out)"
+        for (size_t i = 0; i < cmd.plot_nodes.size(); ++i) {
+            const string& tok = cmd.plot_nodes[i];   // px V(4) or V(out)
 
             size_t open = tok.find('(');
             size_t close = tok.find(')');
