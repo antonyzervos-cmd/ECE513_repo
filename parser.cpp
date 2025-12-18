@@ -1,6 +1,4 @@
-// --------------------------------
 // PART 1 - PARSING 
-// --------------------------------
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -24,9 +22,8 @@ struct element {
 };
 
 
-// -----------------------------------------------------
-// HASH Table (string -> int) helping function, return node id
-// -----------------------------------------------------
+
+// HASH Table, return node id
 int get_the_node_id(std::unordered_map<std::string, int>& node_map, int& node_next_id, const std::string& node_string) {
     // "0" = gnd
     if (node_string == "0") {
@@ -40,9 +37,7 @@ int get_the_node_id(std::unordered_map<std::string, int>& node_map, int& node_ne
     return (node_map[node_string]); // return node id
 }
 
-// -----------------------------------------------------
 // PRINT HASH TABLE
-// -----------------------------------------------------    
 void print_hash_table(const std::unordered_map<std::string, int>& node_map) {
     std::cout << "\n HASH TABLE (Node name, Node ID):\n";
 
@@ -55,9 +50,7 @@ void print_hash_table(const std::unordered_map<std::string, int>& node_map) {
     }
 }
 
-// -----------------------------------------------------
 // Convert string to lowercase
-// -----------------------------------------------------
 void to_lowercase(std::string& str) {
     std::transform(str.begin(), str.end(), str.begin(), // deikths arxh , deikths telos kai deikths overwrite sto palio to neo
                    [](unsigned char character){ 
@@ -65,9 +58,8 @@ void to_lowercase(std::string& str) {
                 });
 }
 
-// -----------------------------------------------------
+
 // Check if string is a number
-// -----------------------------------------------------
 bool is_number(const std::string& string) {
     // check ean ena string mporei na ginei number
     char* end = nullptr;
@@ -75,9 +67,8 @@ bool is_number(const std::string& string) {
     return end != string.c_str() && *end == '\0';
 }
 
-// -----------------------------------------------------
+
 // ADD TO LINKED LIST
-// -----------------------------------------------------
 void add_element_to_list(element*& head, const element& e) {
     element* copied_element = new element(e); //copy constructor tou dosmenou element sto copied_element
     copied_element->next = nullptr;
@@ -96,9 +87,7 @@ void add_element_to_list(element*& head, const element& e) {
 }
 
 
-// -----------------------------------------------------
 // Print List
-// -----------------------------------------------------
 void print_the_list(element* head) {
     std::cout << "\n LIST: \n";
     element* temp = head; // temp gia traversal
@@ -145,15 +134,12 @@ std::tuple<element*, int, std::unordered_map<std::string,int>> parse_netlist(con
         file.exceptions(std::ifstream::badbit); // exceptions enable 
         std::cout << "File opened !!!\n";
 
-        // -------------------------------------
+
         // HASH Table (string TO int)
-        // -------------------------------------
         std::unordered_map<std::string, int> node_map; 
         int node_next_id = 1;  // Τo 0 einai gia gnd, opote ksekinaw apo 1, ara ola thetika ints (to orizw sthn main, gia na menei i timh)
 
-        // -------------------------------------
         // Read File
-        // -------------------------------------
         std::string line_buf; // line buffer
         element* head = nullptr; // start linked list
 
@@ -277,9 +263,7 @@ std::tuple<element*, int, std::unordered_map<std::string,int>> parse_netlist(con
         }
         file.close();
 
-        // -------------------------------------
         // Print Hash Table
-        // -------------------------------------
         print_hash_table(node_map);
 
         return {head, static_cast<int>(node_map.size()), node_map};

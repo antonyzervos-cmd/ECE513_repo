@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <Eigen/Dense>
 #include <iomanip> 
+#include <suitesparse/cs.h>
 
 using namespace std;
 using namespace Eigen;
@@ -17,7 +18,7 @@ struct IStamp {
 std::tuple<MatrixXd, VectorXd,  unordered_map<string,int>, unordered_map<string, IStamp>> build_MNA_DC(element* head, int num_nodes) {
     int n = num_nodes;
 
-    // count voltage sources and inductors (treated as V sources in DC)
+    // count voltage sources and inductors - treated as V sources in DC
     int m2 = 0;
     for (element* e = head; e != nullptr; e = e->next) {
         if (e->type == element::V || e->type == element::L)
@@ -91,7 +92,7 @@ std::tuple<MatrixXd, VectorXd,  unordered_map<string,int>, unordered_map<string,
             // ----------------------------------------------------
             case element::L:
             {
-                // DC: inductor -> short (behaves like ideal Vsource)
+                
                 if (i >= 0) B(i, v_idx) = 1.0;
                 if (j >= 0) B(j, v_idx) = -1.0;
 
@@ -103,11 +104,11 @@ std::tuple<MatrixXd, VectorXd,  unordered_map<string,int>, unordered_map<string,
             }
 
             case element::C:
-                // DC: capacitor , open , no stamping
+                // DC capacitor 
                 break;
 
             default:
-                // ignore nonlinear DC elements (D, Q, M)
+                // ignore (D, Q, M)
                 break;
         }
     }
@@ -139,4 +140,98 @@ std::tuple<MatrixXd, VectorXd,  unordered_map<string,int>, unordered_map<string,
 
     // return A, rhs, and two maps
     return { A, rhs, vsrc_index_map, isrc_index_map};
+}
+
+
+std::tuple<cs*, VectorXd, unordered_map<string,int>, unordered_map<string, IStamp>> build_MNA_sparse(element* head, int num_nodes) {
+    int n = num_nodes;
+
+    int m2 = 0;
+    for (element* e = head; e != nullptr; e = e->next) {
+        if (e->type == element::V || e->type == element::L)
+            ++m2;
+    }
+
+    int dim = n + m2;
+
+   
+    cs* T = cs_spalloc(dim, dim, 1, 1, 1); 
+    // typika orismata to 1 gia plithos nz pou tha ginoun realloc meta
+
+    VectorXd b = VectorXd::Zero(n);
+    VectorXd s = VectorXd::Zero(m2);
+
+    unordered_map<string,int> vsrc_index_map;
+    unordered_map<string, IStamp> isrc_index_map;
+
+    int v_idx = 0; 
+
+    for (element* e = head; e != nullptr; e = e->next)
+    {
+        int n1 = e->nodes[0];
+        int n2 = e->nodes[1];
+
+        int i = (n1 == 0 ? -1 : n1 - 1);
+        int j = (n2 == 0 ? -1 : n2 - 1);
+
+        switch (e->type)
+        {
+            case element::R:
+            {
+                double g = 1.0 / static_cast<double>(e->value);
+                // use cs_entry to add to triplet
+                if (i >= 0) cs_entry(T, i, i, g);
+                if (j >= 0) cs_entry(T, j, j, g);
+                if (i >= 0 && j >= 0) {
+                    cs_entry(T, i, j, -g);
+                    cs_entry(T, j, i, -g);
+                }
+                break;
+            }
+
+            case element::I:
+            {
+                double I = static_cast<double>(e->value);
+                if (i >= 0) b(i) -= I;
+                if (j >= 0) b(j) += I;
+                isrc_index_map[e->name] = { i, j };
+                break;
+            }
+
+            case element::V: // idio me L
+            case element::L:
+            {
+              
+                int row_k = n + v_idx; 
+
+                double val = (e->type == element::V) ? static_cast<double>(e->value) : 0.0;
+                s(v_idx) = val;
+
+                if (i >= 0) {
+                    cs_entry(T, i, row_k, 1.0);  // B
+                    cs_entry(T, row_k, i, 1.0);  // B^T
+                }
+                if (j >= 0) {
+                    cs_entry(T, j, row_k, -1.0); // B
+                    cs_entry(T, row_k, j, -1.0); // B^T
+                }
+
+                vsrc_index_map[e->name] = v_idx;
+                ++v_idx;
+                break;
+            }
+            default: break;
+        }
+    }
+
+    cs* A = cs_compress(T); // TRIPLET SE COMPRESSED COLUMN
+    cs_spfree(T); // free triplet
+
+    cs_dupl(A); // ATHROISMA APO PRIN
+
+    // RHS
+    VectorXd rhs(dim);
+    rhs << b, s;
+
+    return { A, rhs, vsrc_index_map, isrc_index_map };
 }

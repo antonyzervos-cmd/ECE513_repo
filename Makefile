@@ -1,19 +1,19 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -O3 -Wall
 
-INCLUDES = -I/usr/include/eigen3
+INCLUDES = -I. -I/usr/include/eigen3 -I/usr/include/suitesparse
+LIBS = -lcxsparse
 
-TARGET = spice # onoma ektelesimou
-
-SRCS = main.cpp parser.cpp circuit_equations.cpp options.cpp solver.cpp dc_sweep.cpp
+TARGET = spice
+SRCS = main.cpp
 
 all: $(TARGET)
 
 $(TARGET): $(SRCS)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) main.cpp -o $(TARGET)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) $(SRCS) -o $(TARGET) $(LIBS)
 
 clean:
 	rm -f $(TARGET) 
-# dc_op.txt dc_sweep_*.txt
+#dc_op.txt dc_sweep_*.txt
 
 .PHONY: all clean

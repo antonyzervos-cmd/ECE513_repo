@@ -4,13 +4,15 @@
 #include <cctype>
 #include <string>
 #include <vector>
+#include <variant>
+#include <suitesparse/cs.h>
 
 void run_dc_sweep(
     element* head,
     int num_nodes,
     const CommandDC& cmd, 
     const RunOptions& opts,
-    MatrixXd& A,
+    std::variant<MatrixXd, cs*> A_var,
     VectorXd& rhs,
     unordered_map<string,int>& vsrc_index_map,
     unordered_map<string, IStamp>& isrc_index_map,
@@ -73,7 +75,7 @@ void run_dc_sweep(
         }
 
         // solution
-        SolveResult sol = solve_system(head, num_nodes, opts, A, rhs);
+        SolveResult sol = solve_system(head, num_nodes, opts, A_var, rhs);
 
         for (size_t i = 0; i < cmd.plot_nodes.size(); ++i) {
             const string& tok = cmd.plot_nodes[i];   // px V(4) or V(out)

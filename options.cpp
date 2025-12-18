@@ -21,6 +21,7 @@ struct RunOptions {
     bool use_custom = false;
     bool do_dc_sweep = false;
 
+    bool use_sparse = false;
     bool use_iter = false;  // iterative
     double itol = 1e-3;
 
@@ -42,6 +43,7 @@ RunOptions parse_options_from_file(const std::string& filename) {
 
     opts.use_iter = false;
     opts.use_spd = false;
+    opts.use_sparse = false;
     opts.itol = 1e-3;
     opts.do_dc_sweep = false;
 
@@ -62,6 +64,8 @@ RunOptions parse_options_from_file(const std::string& filename) {
                 else if (token == "spd") {
                     opts.use_spd = true;
                 }
+                else if (token == "sparse") 
+                    opts.use_sparse = true;
                 else if (token.find("itol=") == 0)
                     opts.itol = std::stod(token.substr(5));
             }
@@ -76,9 +80,8 @@ RunOptions parse_options_from_file(const std::string& filename) {
                     opts.dc_commands.back().plot_nodes.push_back(token);
             }
         }
-        else if (low.rfind(".dc", 0) == 0)
-        {
-            // new DC
+        else if (low.rfind(".dc", 0) == 0) {
+            // NEW DC
             CommandDC new_cmd;
 
             std::istringstream iss(low);
