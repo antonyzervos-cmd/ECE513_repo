@@ -108,7 +108,6 @@ std::tuple<MatrixXd, VectorXd,  unordered_map<string,int>, unordered_map<string,
                 break;
 
             default:
-                // ignore (D, Q, M)
                 break;
         }
     }
@@ -234,4 +233,80 @@ std::tuple<cs*, VectorXd, unordered_map<string,int>, unordered_map<string, IStam
     rhs << b, s;
 
     return { A, rhs, vsrc_index_map, isrc_index_map };
+}
+
+
+MatrixXd build_MNA_C_Dense(element* head, int num_nodes, 
+                           const unordered_map<string,int>& vsrc_map) {
+    int n = num_nodes;
+    int m2 = vsrc_map.size(); 
+    int dim = n + m2;
+    
+    MatrixXd C_mat = MatrixXd::Zero(dim, dim);
+
+    for (element* e = head; e != nullptr; e = e->next) {
+        int n1 = e->nodes[0];
+        int n2 = e->nodes[1];
+        int i = (n1 == 0 ? -1 : n1 - 1);
+        int j = (n2 == 0 ? -1 : n2 - 1);
+
+        if (e->type == element::C) {
+            double C_val = static_cast<double>(e->value);
+            if (i >= 0) C_mat(i,i) += C_val;
+            if (j >= 0) C_mat(j,j) += C_val;
+            if (i >= 0 && j >= 0) {
+                C_mat(i,j) -= C_val;
+                C_mat(j,i) -= C_val;
+            }
+        }
+        else if (e->type == element::L) {
+            double L_val = static_cast<double>(e->value);
+            // We need its index from the map
+            if (vsrc_map.find(e->name) != vsrc_map.end()) {
+                int k = vsrc_map.at(e->name); 
+                int row = n + k;
+                C_mat(row, row) -= L_val; 
+            }
+        }
+    }
+    return C_mat;
+}
+
+cs* build_MNA_C_Sparse(element* head, int num_nodes, 
+                       const unordered_map<string,int>& vsrc_map) {
+    int n = num_nodes;
+    int m2 = vsrc_map.size();
+    int dim = n + m2;
+
+    cs* T = cs_spalloc(dim, dim, 1, 1, 1);
+
+    for (element* e = head; e != nullptr; e = e->next) {
+        int n1 = e->nodes[0];
+        int n2 = e->nodes[1];
+        int i = (n1 == 0 ? -1 : n1 - 1);
+        int j = (n2 == 0 ? -1 : n2 - 1);
+
+        if (e->type == element::C) {
+            double C_val = static_cast<double>(e->value);
+            if (i >= 0) cs_entry(T, i, i, C_val);
+            if (j >= 0) cs_entry(T, j, j, C_val);
+            if (i >= 0 && j >= 0) {
+                cs_entry(T, i, j, -C_val);
+                cs_entry(T, j, i, -C_val);
+            }
+        }
+        else if (e->type == element::L) {
+            double L_val = static_cast<double>(e->value);
+            if (vsrc_map.find(e->name) != vsrc_map.end()) {
+                int k = vsrc_map.at(e->name);
+                int row = n + k;
+                cs_entry(T, row, row, -L_val);
+            }
+        }
+    }
+    
+    cs* C = cs_compress(T);
+    cs_spfree(T);
+    cs_dupl(C);
+    return C;
 }

@@ -13,14 +13,26 @@
 #include <utility>
 using namespace std;
 
-struct element {
-    std::string name, model_name; // element name     
-    enum type {R, C, L, V, I, D, Q, M} type; // element type - enum kai pedio mazi
-    float value, length, width, area; // element values
-    std::vector<int> nodes; // nodes vector 
-    element* next = nullptr; // pointer to next element
+
+enum TranType {NONE, EXP, SIN, PULSE, PWL};
+
+struct TransientSpec {
+    TranType type = NONE;
+
+    std::vector<double> params; // For EXP, SIN, PULSE
+    std::vector<std::pair<double, double>> pwl_points; // For PWL
 };
 
+
+
+struct element {
+    std::string name, model_name; // element name     
+    enum type {R, C, L, V, I, D, Q, M} type; 
+    float value, length, width, area; // element values
+    std::vector<int> nodes; // nodes vector
+    TransientSpec tran_spec; 
+    element* next = nullptr; // pointer to next element
+};
 
 
 // HASH Table, return node id
@@ -109,16 +121,50 @@ void print_the_list(element* head) {
             std::cout << node << " ";
         }
 
-        if (temp->type != element::M && temp->type != element::Q && temp->type != element::D) { // to M kai to Q kai to D den exoun value
+        // Print DC Value
+        if (temp->type != element::M && temp->type != element::Q && temp->type != element::D) { 
             std::cout << " VALUE: " << temp->value;
         }
 
-        if (!temp->model_name.empty()) { // ean exei model name 
+        if (!temp->model_name.empty()) { 
             std::cout << " MODEL: " << temp->model_name;
         }
+        
         // IF MOS, print L and W
         if (temp->type == element::M) {
             std::cout << " L= " << temp->length << " W= " << temp->width;
+        }
+
+        // --- NEW: Print Transient Spec for Sources ---
+        if (temp->type == element::V || temp->type == element::I) {
+            if (temp->tran_spec.type != NONE) {
+                std::cout << " TRAN: ";
+                switch (temp->tran_spec.type) {
+                    case EXP:
+                        std::cout << "EXP(";
+                        for (double p : temp->tran_spec.params) std::cout << p << " ";
+                        std::cout << ")";
+                        break;
+                    case SIN:
+                        std::cout << "SIN(";
+                        for (double p : temp->tran_spec.params) std::cout << p << " ";
+                        std::cout << ")";
+                        break;
+                    case PULSE:
+                        std::cout << "PULSE(";
+                        for (double p : temp->tran_spec.params) std::cout << p << " ";
+                        std::cout << ")";
+                        break;
+                    case PWL:
+                        std::cout << "PWL(";
+                        for (const auto& pt : temp->tran_spec.pwl_points) {
+                            std::cout << "(" << pt.first << "," << pt.second << ") ";
+                        }
+                        std::cout << ")";
+                        break;
+                    default: break;
+                }
+            }
         }
 
         temp = temp->next; // move to next element
@@ -230,16 +276,77 @@ std::tuple<element*, int, std::unordered_map<std::string,int>> parse_netlist(con
             }
 
             // Next token is VALUE or MODEL NAME
-            std::string last_token = tokens_vector[num_nodes + 1];
+            int current_token_idx = num_nodes + 1; 
 
-            if (is_number(last_token)) {
-                e.value = std::stof(last_token); // string to float , ean px 1e-6
-            } 
-            else {
-                e.model_name = last_token;
+            if (current_token_idx < static_cast<int>(tokens_vector.size())) {
+                std::string last_token = tokens_vector[current_token_idx];
+
+                if (is_number(last_token)) {
+                    e.value = std::stof(last_token); // string to float , ean px 1e-6
+                    current_token_idx++; // Advance index after reading value
+                } 
+                else {
+                    e.model_name = last_token;
+                    current_token_idx++; // Advance index after reading model
+                }
             }
 
-            // If we have MOS TRANSISTOR, read additional parameters L,W
+            // --- Transient Spec V I sources ---
+            if (e.type == element::V || e.type == element::I) {
+                if (current_token_idx < static_cast<int>(tokens_vector.size())) {
+                    std::string func_name = tokens_vector[current_token_idx];
+                    
+                    if (func_name.find("exp") != std::string::npos) {
+                        e.tran_spec.type = EXP;
+                        // Read 6 params
+                        for(int k=0; k<6 && (current_token_idx+1+k < static_cast<int>(tokens_vector.size())); ++k) {
+                             std::string p = tokens_vector[current_token_idx+1+k];
+                             // remove (
+                             p.erase(std::remove(p.begin(), p.end(), '('), p.end());
+                             p.erase(std::remove(p.begin(), p.end(), ')'), p.end());
+                             e.tran_spec.params.push_back(std::stod(p));
+                        }
+                    } 
+                    else if (func_name.find("sin") != std::string::npos) {
+                        e.tran_spec.type = SIN;
+                        // Read 6 params
+                        for(int k=0; k<6 && (current_token_idx+1+k < static_cast<int>(tokens_vector.size())); ++k) {
+                             std::string p = tokens_vector[current_token_idx+1+k];
+                             p.erase(std::remove(p.begin(), p.end(), '('), p.end());
+                             p.erase(std::remove(p.begin(), p.end(), ')'), p.end());
+                             e.tran_spec.params.push_back(std::stod(p));
+                        }
+                    }
+                    else if (func_name.find("pulse") != std::string::npos) {
+                        e.tran_spec.type = PULSE;
+                        // Read 7 params
+                        for(int k=0; k<7 && (current_token_idx+1+k < static_cast<int>(tokens_vector.size())); ++k) {
+                             std::string p = tokens_vector[current_token_idx+1+k];
+                             p.erase(std::remove(p.begin(), p.end(), '('), p.end());
+                             p.erase(std::remove(p.begin(), p.end(), ')'), p.end());
+                             e.tran_spec.params.push_back(std::stod(p));
+                        }
+                    }
+                    else if (func_name.find("pwl") != std::string::npos) {
+                        e.tran_spec.type = PWL;
+                        // Read pairs until end of line
+                        for (size_t k = current_token_idx + 1; k < tokens_vector.size(); k += 2) {
+                            if (k+1 >= tokens_vector.size()) break;
+                            std::string t_str = tokens_vector[k];
+                            std::string v_str = tokens_vector[k+1];
+                            // Strip parens
+                            t_str.erase(std::remove(t_str.begin(), t_str.end(), '('), t_str.end());
+                            t_str.erase(std::remove(t_str.begin(), t_str.end(), ')'), t_str.end());
+                            v_str.erase(std::remove(v_str.begin(), v_str.end(), '('), v_str.end());
+                            v_str.erase(std::remove(v_str.begin(), v_str.end(), ')'), v_str.end());
+                            
+                            e.tran_spec.pwl_points.push_back({std::stod(t_str), std::stod(v_str)});
+                        }
+                    }
+                }
+            }
+            
+            // If we have MOS TRANSISTOR, read  parameters L,W
             if (e.type == element::M) {
                 for (size_t j = 6; j <= 7; ++j) { // j = 6, giati eimaste sthn 6 thesi tou tokens_vector
                     std::string position = tokens_vector[j]; // px l=1e-6, to fortwnw se variable 

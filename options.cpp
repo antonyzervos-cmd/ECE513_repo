@@ -7,6 +7,14 @@
 #include <cctype>
 #include <iostream>
 
+enum TranMethod {TR, BE}; 
+
+struct CommandTran {
+    double step = 0;
+    double fin_time = 0;
+    std::vector<std::string> plot_nodes;
+};
+
 
 struct CommandDC {
     std::string source_name; // onoma phghs sarwshs
@@ -22,8 +30,12 @@ struct RunOptions {
     bool do_dc_sweep = false;
 
     bool use_sparse = false;
-    bool use_iter = false;  // iterative
+    bool use_iter = false;  // iter
     double itol = 1e-3;
+
+    bool do_transient = false;
+    TranMethod tran_method = TR; // Default Trap
+    CommandTran tran_cmd;
 
     std::vector<CommandDC> dc_commands; 
 };
@@ -46,6 +58,8 @@ RunOptions parse_options_from_file(const std::string& filename) {
     opts.use_sparse = false;
     opts.itol = 1e-3;
     opts.do_dc_sweep = false;
+    opts.do_transient = false;
+    opts.tran_method = TR;
 
     std::string line;
     while (std::getline(file, line))
@@ -68,15 +82,32 @@ RunOptions parse_options_from_file(const std::string& filename) {
                     opts.use_sparse = true;
                 else if (token.find("itol=") == 0)
                     opts.itol = std::stod(token.substr(5));
+                else if (token.find("method=be") == 0) 
+                    opts.tran_method = BE;
+                else if (token.find("method=tr") == 0) 
+                    opts.tran_method = TR;
             }
         }
-        else if (low.rfind(".print", 0) == 0 || low.rfind(".plot", 0) == 0)
-        {
+        else if (low.rfind(".tran", 0) == 0) {
+            // .TRAN <step> <fin_time>
+            std::istringstream iss(low);
+            std::string token;
+            iss >> token; // .tran
+            
+            if (iss >> opts.tran_cmd.step >> opts.tran_cmd.fin_time) {
+                opts.do_transient = true;
+            }
+        }
+        else if (low.rfind(".print", 0) == 0 || low.rfind(".plot", 0) == 0) {
             std::istringstream iss(low);
             std::string token;
             iss >> token; // .print
-            if (!opts.dc_commands.empty()) {
-                while (iss >> token)
+
+            while (iss >> token) {
+                if (opts.do_transient) 
+                    opts.tran_cmd.plot_nodes.push_back(token);
+                
+                if (!opts.dc_commands.empty()) 
                     opts.dc_commands.back().plot_nodes.push_back(token);
             }
         }

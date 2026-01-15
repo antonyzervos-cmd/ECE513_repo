@@ -6,10 +6,11 @@
 #include "options.cpp"
 #include "solver.cpp"
 #include "dc_sweep.cpp"
+#include "transient.cpp"
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::cerr << "No args! Usage: ./spice <netlist>\n";
+        std::cerr << "No args! ./spice \n";
         return 1;
     }
 
@@ -19,56 +20,68 @@ int main(int argc, char** argv) {
     auto [head, num_nodes, node_map] = parse_netlist(filename);
     // Parse .options, .dc, .plot
     RunOptions opts = parse_options_from_file(filename);
-    // Print circuit elements 
+    // Print 
     print_the_list(head);
 
-  
-    // Build System Sparse or Dense
-    std::variant<MatrixXd, cs*> A_container;
+    std::variant<MatrixXd, cs*> G_container; // G sparse or dense 
+    std::variant<MatrixXd, cs*> C_container; // C 
+    VectorXd b_dc; // DC RHS
+
     
     VectorXd rhs;
     std::unordered_map<std::string, int> vsrc_index_map;
     std::unordered_map<std::string, IStamp> isrc_index_map;
 
     if (opts.use_sparse) {
-
-        auto [A_sp, b_sp, v_map, i_map] = build_MNA_sparse(head, num_nodes);
+        // SPARSE MODE ON
         
-        A_container = A_sp;
-        rhs = b_sp;
-        vsrc_index_map = v_map;
-        isrc_index_map = i_map;
+        auto [G_sp, rhs_local, v_m, i_m] = build_MNA_sparse(head, num_nodes); // Build G 
+        
+        cs* C_sp = build_MNA_C_Sparse(head, num_nodes, v_m); // Build C
+        
+        G_container = G_sp;
+        C_container = C_sp;
+        b_dc = rhs_local;
+        vsrc_index_map = v_m; 
+        isrc_index_map = i_m;
     } 
     else {
-        // Dense case
-        auto [A_dn, b_dn, v_map, i_map] = build_MNA_DC(head, num_nodes);
+        // DENSE MODE ON
+        auto [G_dn, rhs_local, v_m, i_m] = build_MNA_DC(head, num_nodes); // Build G 
+        MatrixXd C_dn = build_MNA_C_Dense(head, num_nodes, v_m); // Build C
         
-        A_container = A_dn;
-        rhs = b_dn;
-        vsrc_index_map = v_map;
-        isrc_index_map = i_map;
+        G_container = G_dn;
+        C_container = C_dn;
+        b_dc = rhs_local;
+        vsrc_index_map = v_m; 
+        isrc_index_map = i_m;
     }
 
 
     // Solve DC Operating Point
-    SolveResult sol = solve_system(head, num_nodes, opts, A_container, rhs);
+    SolveResult sol = solve_system(head, num_nodes, opts, G_container, b_dc);
     write_dc_op("dc_op.txt", head, sol);
 
 
+    // Transient Analysis
+    if (opts.do_transient) {
+        run_transient_analysis(head, num_nodes, opts, G_container, C_container, sol.x, vsrc_index_map, isrc_index_map, node_map);
+    }
+
     // DC Sweep
     if (opts.do_dc_sweep) {
-        VectorXd rhs_backup = rhs; 
+        VectorXd rhs_backup = b_dc; 
         for (const auto& cmd : opts.dc_commands) {
             rhs = rhs_backup; // Reset RHS
-            run_dc_sweep(head, num_nodes, cmd, opts, A_container, rhs, vsrc_index_map, isrc_index_map, node_map);
+            run_dc_sweep(head, num_nodes, cmd, opts, G_container, rhs, vsrc_index_map, isrc_index_map, node_map);
         }
     }
 
 
     // Cleanup
-    if (opts.use_sparse && std::holds_alternative<cs*>(A_container)) {
-        cout << "\n SPARSE \n";
-        cs_spfree(std::get<cs*>(A_container));
+    if (opts.use_sparse) {
+        if(std::holds_alternative<cs*>(G_container)) cs_spfree(std::get<cs*>(G_container));
+        if(std::holds_alternative<cs*>(C_container)) cs_spfree(std::get<cs*>(C_container));
     }
 
     // Free linked list elements
