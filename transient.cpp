@@ -83,6 +83,13 @@ VectorXd update_rhs_transient(element* head, int n, int m2, double t,
         if (e->type == element::I || e->type == element::V) {
             double val = eval_transient_src(e, t);
             
+            // --- DEBUG PRINT ---
+         //   if (t < 1e-9 || val > 0.1) { 
+          //      cout << "Time: " << t << " Source: " << e->name 
+           //         << " Value: " << val << " Type: " << e->tran_spec.type << endl;
+         //   }
+
+
             // enimeroso RHS
             if (e->type == element::I) {
                 IStamp st = isrc_map.at(e->name);
@@ -179,6 +186,13 @@ void run_transient_analysis(
             }
             
             rhs_final = e_t + coeff * Cx;
+            // --- DEBUG PRINT ---
+         //   if (t < 5e-11) { 
+         //       cout << "Step t=" << t << " RHS Norm: " << rhs_final.norm() << endl;
+        //        cout << "  e_t norm: " << e_t.norm() << endl;
+        //        cout << "  Cx norm: " << Cx.norm() << endl;
+        //    }
+
         } 
         else { 
             // TRap: rhs = e(t) + e(t-h) - (G - (2/h)C)*x_prev
@@ -195,6 +209,14 @@ void run_transient_analysis(
             }
             
             rhs_final = e_t + e_old + coeff * Cx - Gx; 
+
+            // --- DEBUG PRINT ---
+       //     if (t < 5e-11) { 
+        //        cout << "Step t=" << t << " RHS Norm: " << rhs_final.norm() << endl;
+        //        cout << "  e_t norm: " << e_t.norm() << endl;
+         //       cout << "  Cx norm: " << Cx.norm() << endl;
+        //        cout << "  Gx norm: " << Gx.norm() << endl;
+       //     }
         }
 
         // solve system A_eff * x = rhs_final

@@ -24,7 +24,6 @@ struct TransientSpec {
 };
 
 
-
 struct element {
     std::string name, model_name; // element name     
     enum type {R, C, L, V, I, D, Q, M} type; 
@@ -135,7 +134,7 @@ void print_the_list(element* head) {
             std::cout << " L= " << temp->length << " W= " << temp->width;
         }
 
-        // --- NEW: Print Transient Spec for Sources ---
+        // ---: Print Transient Spec for Sources ---
         if (temp->type == element::V || temp->type == element::I) {
             if (temp->tran_spec.type != NONE) {
                 std::cout << " TRAN: ";
@@ -198,6 +197,11 @@ std::tuple<element*, int, std::unordered_map<std::string,int>> parse_netlist(con
                 continue;
             }
             
+            // --- Replace Parentheses and Commas with Spaces --- !!!
+            std::replace(line_buf.begin(), line_buf.end(), '(', ' ');
+            std::replace(line_buf.begin(), line_buf.end(), ')', ' ');
+            std::replace(line_buf.begin(), line_buf.end(), ',', ' '); // ECLASS!!
+
             // Metatrepse se Lowercase, Non case sensitive
             to_lowercase(line_buf);
 
@@ -301,9 +305,7 @@ std::tuple<element*, int, std::unordered_map<std::string,int>> parse_netlist(con
                         // Read 6 params
                         for(int k=0; k<6 && (current_token_idx+1+k < static_cast<int>(tokens_vector.size())); ++k) {
                              std::string p = tokens_vector[current_token_idx+1+k];
-                             // remove (
-                             p.erase(std::remove(p.begin(), p.end(), '('), p.end());
-                             p.erase(std::remove(p.begin(), p.end(), ')'), p.end());
+                             // OI PARENTHESEIS EXOUN Hdh AFAIRETHEI APO TO REPLACE PANW
                              e.tran_spec.params.push_back(std::stod(p));
                         }
                     } 
@@ -312,8 +314,6 @@ std::tuple<element*, int, std::unordered_map<std::string,int>> parse_netlist(con
                         // Read 6 params
                         for(int k=0; k<6 && (current_token_idx+1+k < static_cast<int>(tokens_vector.size())); ++k) {
                              std::string p = tokens_vector[current_token_idx+1+k];
-                             p.erase(std::remove(p.begin(), p.end(), '('), p.end());
-                             p.erase(std::remove(p.begin(), p.end(), ')'), p.end());
                              e.tran_spec.params.push_back(std::stod(p));
                         }
                     }
@@ -322,8 +322,6 @@ std::tuple<element*, int, std::unordered_map<std::string,int>> parse_netlist(con
                         // Read 7 params
                         for(int k=0; k<7 && (current_token_idx+1+k < static_cast<int>(tokens_vector.size())); ++k) {
                              std::string p = tokens_vector[current_token_idx+1+k];
-                             p.erase(std::remove(p.begin(), p.end(), '('), p.end());
-                             p.erase(std::remove(p.begin(), p.end(), ')'), p.end());
                              e.tran_spec.params.push_back(std::stod(p));
                         }
                     }
@@ -334,23 +332,18 @@ std::tuple<element*, int, std::unordered_map<std::string,int>> parse_netlist(con
                             if (k+1 >= tokens_vector.size()) break;
                             std::string t_str = tokens_vector[k];
                             std::string v_str = tokens_vector[k+1];
-                            // Strip parens
-                            t_str.erase(std::remove(t_str.begin(), t_str.end(), '('), t_str.end());
-                            t_str.erase(std::remove(t_str.begin(), t_str.end(), ')'), t_str.end());
-                            v_str.erase(std::remove(v_str.begin(), v_str.end(), '('), v_str.end());
-                            v_str.erase(std::remove(v_str.begin(), v_str.end(), ')'), v_str.end());
-                            
+                            // Oi parentheseis exoun fygei me to replace
                             e.tran_spec.pwl_points.push_back({std::stod(t_str), std::stod(v_str)});
                         }
                     }
                 }
             }
             
-            // If we have MOS TRANSISTOR, read  parameters L,W
+            // If we have MOS TRANSISTOR, read parameters L,W
             if (e.type == element::M) {
                 for (size_t j = 6; j <= 7; ++j) { // j = 6, giati eimaste sthn 6 thesi tou tokens_vector
                     std::string position = tokens_vector[j]; // px l=1e-6, to fortwnw se variable 
-                    size_t equals_position = position.find('='); //  vriskw pou einai to =
+                    size_t equals_position = position.find('='); // vriskw pou einai to =
                     // pairnw meros PRIN to =
                     std::string l_or_w = position.substr(0, equals_position); 
                     to_lowercase(l_or_w);

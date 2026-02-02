@@ -57,6 +57,30 @@ int main(int argc, char** argv) {
         isrc_index_map = i_m;
     }
 
+    //  Ensure DC OP is calculated using t=0 transient values, arxiko RHS
+    if (opts.do_transient) {
+        b_dc.setZero(); 
+        for (element* e = head; e; e = e->next) {
+            if (e->type == element::I || e->type == element::V) {
+                double val = eval_transient_src(e, 0.0);
+                
+                if (e->type == element::I) {
+                    if (isrc_index_map.find(e->name) != isrc_index_map.end()) {
+                        IStamp st = isrc_index_map.at(e->name);
+                        if (st.i >= 0) b_dc(st.i) -= val;
+                        if (st.j >= 0) b_dc(st.j) += val;
+                    }
+                }
+                else if (e->type == element::V) {
+                    if (vsrc_index_map.find(e->name) != vsrc_index_map.end()) {
+                        int k = vsrc_index_map.at(e->name);
+                        b_dc(num_nodes + k) = val;
+                    }
+                }
+            }
+        }
+    }
+
 
     // Solve DC Operating Point
     SolveResult sol = solve_system(head, num_nodes, opts, G_container, b_dc);
