@@ -197,7 +197,7 @@ std::tuple<element*, int, std::unordered_map<std::string,int>> parse_netlist(con
                 continue;
             }
             
-            // --- Replace Parentheses and Commas with Spaces --- !!!
+            // -------
             std::replace(line_buf.begin(), line_buf.end(), '(', ' ');
             std::replace(line_buf.begin(), line_buf.end(), ')', ' ');
             std::replace(line_buf.begin(), line_buf.end(), ',', ' '); // ECLASS!!

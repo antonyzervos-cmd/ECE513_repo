@@ -6,6 +6,7 @@
 #include <fstream>
 #include <Eigen/Dense>
 #include <suitesparse/cs.h>
+#include <cstdio>
 
 using namespace Eigen;
 using namespace std;
@@ -186,7 +187,7 @@ void run_transient_analysis(
             }
             
             rhs_final = e_t + coeff * Cx;
-            // --- DEBUG PRINT ---
+            
          //   if (t < 5e-11) { 
          //       cout << "Step t=" << t << " RHS Norm: " << rhs_final.norm() << endl;
         //        cout << "  e_t norm: " << e_t.norm() << endl;
@@ -210,7 +211,6 @@ void run_transient_analysis(
             
             rhs_final = e_t + e_old + coeff * Cx - Gx; 
 
-            // --- DEBUG PRINT ---
        //     if (t < 5e-11) { 
         //        cout << "Step t=" << t << " RHS Norm: " << rhs_final.norm() << endl;
         //        cout << "  e_t norm: " << e_t.norm() << endl;
@@ -239,4 +239,41 @@ void run_transient_analysis(
     if (opts.use_sparse) {
         cs_spfree(std::get<cs*>(A_eff_var));
     }
+
+
+    // ---------PLOTTING--------------
+    for(const auto& node_raw : opts.tran_cmd.plot_nodes) {
+        string node = node_raw; 
+        
+        size_t p1 = node.find('('); size_t p2 = node.find(')');
+        if(p1 != string::npos && p2 != string::npos) 
+            node = node.substr(p1+1, p2-p1-1);
+            
+        string data_filename = "tran_V(" + node + ").txt";
+        string plot_filename = "tran_V(" + node + ").png"; 
+
+       
+        FILE *gp = popen("gnuplot", "w");
+        
+        if (gp) {
+            
+            fprintf(gp, "set term png size 1024,768\n"); 
+            fprintf(gp, "set output '%s'\n", plot_filename.c_str()); 
+            
+            fprintf(gp, "set title 'Transient Analysis: V(%s)'\n", node.c_str());
+            fprintf(gp, "set xlabel 'Time (s)'\n");
+            fprintf(gp, "set ylabel 'Voltage (V)'\n");
+            fprintf(gp, "set grid\n"); 
+            
+            fprintf(gp, "plot '%s' using 1:2 with lines lw 2 title 'V(%s)'\n", 
+                    data_filename.c_str(), node.c_str());
+            
+            pclose(gp);
+            cout << "Generated plot: " << plot_filename << endl;
+        } 
+        else {
+            cerr << "Warning: Could not open gnuplot. Ensure it is installed and in your PATH." << endl;
+        }
+    }
+
 }

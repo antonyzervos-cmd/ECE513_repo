@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
         isrc_index_map = i_m;
     }
 
-    //  Ensure DC OP is calculated using t=0 transient values, arxiko RHS
+    // DC OP is calculated using t=0 transient values, arxiko RHS
     if (opts.do_transient) {
         b_dc.setZero(); 
         for (element* e = head; e; e = e->next) {
@@ -80,7 +80,6 @@ int main(int argc, char** argv) {
             }
         }
     }
-
 
     // Solve DC Operating Point
     SolveResult sol = solve_system(head, num_nodes, opts, G_container, b_dc);
